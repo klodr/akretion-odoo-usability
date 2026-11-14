@@ -1,6 +1,8 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo.tests import Form, tagged
+from lxml import etree
+
+from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
 
@@ -40,6 +42,25 @@ class TestDeliveryUsability(TransactionCase):
                 self.env['stock.picking']._fields[fname].tracking,
                 "%s must be tracked" % fname)
 
+    def test_carrier_not_readonly_in_picking_form(self):
+        # Form() cannot open this picking in 18.0: the view of stock_delivery
+        # makes partner_id required with "carrier_id.integration_level", a
+        # path that the Python evaluation of Form does not support. The view
+        # is checked on its arch instead.
+        arch = self.env['stock.picking'].get_view(
+            self.env.ref('stock.view_picking_form').id, 'form')['arch']
+        carrier_fields = etree.fromstring(arch).xpath("//field[@name='carrier_id']")
+        self.assertTrue(carrier_fields)
+        for field in carrier_fields:
+            self.assertEqual(field.get('readonly'), '0')
+
+    def _flush_tracking(self):
+        # Tracking is computed on commit, and a record created in the same
+        # transaction is not tracked until then: force it, as the mail tests
+        # do (MailCase.flush_tracking).
+        self.env.flush_all()
+        self.cr.precommit.run()
+
     def test_change_carrier_on_done_picking(self):
         picking = self.picking
         picking.action_confirm()
@@ -47,10 +68,14 @@ class TestDeliveryUsability(TransactionCase):
         picking.move_ids.picked = True
         picking._action_done()
         self.assertEqual(picking.state, 'done')
+        self._flush_tracking()
         n_msg = len(picking.message_ids)
-        with Form(picking) as form:
-            form.carrier_id = self.carrier2
-            form.carrier_tracking_ref = 'TRACK-1'
+        picking.write({
+            'carrier_id': self.carrier2.id,
+            'carrier_tracking_ref': 'TRACK-1',
+        })
+        self._flush_tracking()
+        picking.invalidate_recordset(['message_ids'])
         self.assertEqual(picking.carrier_id, self.carrier2)
         self.assertEqual(picking.carrier_tracking_ref, 'TRACK-1')
         self.assertGreater(len(picking.message_ids), n_msg)
