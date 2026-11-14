@@ -4,7 +4,7 @@
 
 {
     'name': 'Intrastat Product Type',
-    'version': '16.0.1.0.0',
+    'version': '18.0.1.0.0',
     'category': 'Accounting',
     'license': 'AGPL-3',
     'summary': 'Adds a special field Intrastat Type on Products',
@@ -12,5 +12,5 @@
     'website': 'https://github.com/akretion/odoo-usability',
     'depends': ['intrastat_product', 'l10n_fr_intrastat_service'],
     'data': ['views/product.xml'],
-    'installable': False,
+    'installable': True,
 }

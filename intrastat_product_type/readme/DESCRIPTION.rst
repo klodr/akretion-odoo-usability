@@ -1,0 +1,3 @@
+This module is designed for a very special usage scenario: some companies want to handle the delivery of services the same way as they handle the delivery of goods; they want to show the services in the delivery note. So, those companies configure the services with Type = *Goods*. This works well to have the services on the outgoing pickings, but it is a problem for the intrastat declarations.
+
+The field *Intrastat Type* (*Product* or *Service*) is defined by *intrastat_base*, which computes it from the product type. This module makes it editable on *Goods* products, and the services declaration (DES) uses it instead of the native *Type* field.
