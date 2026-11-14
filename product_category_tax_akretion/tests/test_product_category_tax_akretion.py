@@ -1,7 +1,6 @@
 # Copyright 2026 Claude Perrin <klodr@users.noreply.github.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo.exceptions import ValidationError
 from odoo.tests import Form, TransactionCase
 
 
@@ -75,12 +74,14 @@ class TestProductCategoryTax(TransactionCase):
             self.assertEqual(set(form.taxes_id.ids), set(self.sale_b.ids))
             self.assertEqual(set(form.supplier_taxes_id.ids), set(self.purchase_b.ids))
 
-    def test_constraint_taxes_must_match_category(self):
+    def test_write_taxes_keeps_category_taxes(self):
+        # Unlike the former local port (which raised), the Akretion module
+        # rewrites the taxes of the category on any write of the taxes.
         product = self._create_product(self.categ_a)
-        with self.assertRaises(ValidationError):
-            product.write({"taxes_id": [(6, 0, self.sale_b.ids)]})
+        product.write({"taxes_id": [(6, 0, self.sale_b.ids)]})
+        self.assertEqual(product.taxes_id, self.sale_a)
 
-    def test_constraint_purchase_taxes_must_match_category(self):
+    def test_write_purchase_taxes_keeps_category_taxes(self):
         product = self._create_product(self.categ_a)
-        with self.assertRaises(ValidationError):
-            product.write({"supplier_taxes_id": [(6, 0, self.purchase_b.ids)]})
+        product.write({"supplier_taxes_id": [(6, 0, self.purchase_b.ids)]})
+        self.assertEqual(product.supplier_taxes_id, self.purchase_a)
