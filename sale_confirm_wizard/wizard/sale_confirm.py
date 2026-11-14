@@ -1,10 +1,10 @@
-# Copyright 2017-2021 Akretion France (http://www.akretion.com/)
+# Copyright 2017-2024 Akretion France (http://www.akretion.com/)
 # @author: Alexis de Lattre <alexis.delattre@akretion.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo import _, api, fields, models
 from odoo.addons.base.models.res_partner import WARNING_MESSAGE
+from odoo.exceptions import UserError
 
 
 class SaleConfirm(models.TransientModel):
@@ -28,7 +28,7 @@ class SaleConfirm(models.TransientModel):
     @api.model
     def _prepare_default_get(self, order):
         partner = order.partner_id.commercial_partner_id
-        default = {
+        return {
             'sale_id': order.id,
             'client_order_ref': order.client_order_ref,
             'payment_term_id': order.payment_term_id.id or False,
@@ -38,16 +38,16 @@ class SaleConfirm(models.TransientModel):
             'sale_warn': partner.sale_warn,
             'commitment_date': order.commitment_date,
         }
-        return default
 
     @api.model
-    def default_get(self, fields):
-        res = super().default_get(fields)
-        assert self._context.get('active_model') == 'sale.order',\
-            'active_model should be sale.order'
-        order = self.env['sale.order'].browse(self._context.get('active_id'))
-        default = self._prepare_default_get(order)
-        res.update(default)
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        if (
+                self.env.context.get('active_model') == 'sale.order'
+                and self.env.context.get('active_id')):
+            order = self.env['sale.order'].browse(
+                self.env.context['active_id'])
+            res.update(self._prepare_default_get(order))
         return res
 
     def _prepare_update_so(self):
@@ -58,7 +58,7 @@ class SaleConfirm(models.TransientModel):
             'partner_invoice_id': self.partner_invoice_id.id,
             'partner_shipping_id': self.partner_shipping_id.id,
             'commitment_date': self.commitment_date,
-            }
+        }
 
     def confirm(self):
         self.ensure_one()
@@ -66,9 +66,9 @@ class SaleConfirm(models.TransientModel):
         if partner.sale_warn == 'block':
             raise UserError(_(
                 "You cannot confirm this quotation because "
-                "customer '%s' has a blocker sale warning:\n\n%s")
-                % (partner.display_name, partner.sale_warn_msg))
-        vals = self._prepare_update_so()
-        self.sale_id.write(vals)
+                "customer '%(partner)s' has a blocker sale warning:\n\n%(msg)s",
+                partner=partner.display_name,
+                msg=partner.sale_warn_msg))
+        self.sale_id.write(self._prepare_update_so())
         # confirm sale order
         self.sale_id.action_confirm()

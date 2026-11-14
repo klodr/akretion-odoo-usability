@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2017-2021 Akretion France (http://www.akretion.com/)
+  Copyright 2017-2024 Akretion France (http://www.akretion.com/)
   @author: Alexis de Lattre <alexis.delattre@akretion.com>
   License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 -->
@@ -12,12 +12,14 @@
     <field name="model">sale.order</field>
     <field name="inherit_id" ref="sale.view_order_form"/>
     <field name="arch" type="xml">
-        <button id="action_confirm" position="attributes">
+        <!-- The native view has 2 confirm buttons: the primary one (state
+        'sent'), which has an id, and the one of the quotation (state 'draft') -->
+        <xpath expr="//button[@id='action_confirm']" position="attributes">
             <attribute name="name">sale_confirm_wizard_button</attribute>
-        </button>
-        <button name="action_confirm" attrs="{'invisible': [('state', 'not in', ['draft'])]}" position="attributes">
+        </xpath>
+        <xpath expr="//header/button[@name='action_confirm'][not(@id)]" position="attributes">
             <attribute name="name">sale_confirm_wizard_button</attribute>
-        </button>
+        </xpath>
     </field>
 </record>
 
