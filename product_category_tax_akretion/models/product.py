@@ -35,6 +35,13 @@ class ProductCategTaxMixin(models.AbstractModel):
         # use sudo() to get taxes from ALL companies
         vals['taxes_id'], vals['supplier_taxes_id'] = self._apply_tax_from_category(categ.sudo())
         allowed_company_ids = list(self.env['res.company']._search([]))
+        if not self.env.su:
+            # A user may read companies he is not a member of (Access Rights
+            # group): keep his own companies only, otherwise self.env.company
+            # raises "Access to unauthorized or invalid companies".
+            user_company_ids = self.env.user._get_company_ids()
+            allowed_company_ids = [
+                cid for cid in allowed_company_ids if cid in user_company_ids]
         # Put self.env.company at the first position of allowed_company_ids
         # because in the ORM code he takes self.env.company as allowed_company_ids[0]
         cur_company_id = self.env.company.id
