@@ -57,7 +57,10 @@ class ProductCategTaxMixin(models.AbstractModel):
             if vals.get('categ_id'):
                 categ = self.env['product.category'].browse(vals['categ_id'])
                 allowed_company_ids = self._tax_update_vals(categ, vals)
-        return super(ProductCategTaxMixin, self.with_context(allowed_company_ids=allowed_company_ids)).create(vals_list)
+        records = super(ProductCategTaxMixin, self.with_context(allowed_company_ids=allowed_company_ids)).create(vals_list)
+        # The allowed companies are only needed to write the taxes: give the
+        # records back in the environment of the caller.
+        return records.with_env(self.env)
 
     def write(self, vals):
         if vals.get('categ_id'):

@@ -101,6 +101,20 @@ class TestProductCategoryTaxMultiCompany(TransactionCase):
         self.assertEqual(product.taxes_id, self.sale_tax_2)
         self.assertEqual(product.supplier_taxes_id, self.purchase_tax_2)
 
+    def test_created_record_keeps_the_caller_context(self):
+        # The companies allowed to write the taxes must not stay on the
+        # records returned by create(), for instance when another user then
+        # works on them.
+        product = self.env["product.template"].create(
+            {"name": "Test product", "categ_id": self.categ.id}
+        )
+        self.assertEqual(
+            product.env.context.get("allowed_company_ids"),
+            self.env.context.get("allowed_company_ids"),
+        )
+        product.with_user(self.user_one_company).write({"categ_id": self.categ_2.id})
+        self.assertEqual(product.taxes_id, self.sale_tax_2)
+
     def test_create_keeps_taxes_of_all_companies_of_the_user(self):
         # The current company only is active: the taxes of the other company
         # of the user must still be copied from the category.
