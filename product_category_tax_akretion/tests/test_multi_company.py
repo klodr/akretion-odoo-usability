@@ -155,3 +155,33 @@ class TestProductCategoryTaxMultiCompany(TransactionCase):
         self.env.invalidate_all()
         self.assertEqual(product.sudo().taxes_id, self.sale_tax_2)
         self.assertEqual(product.sudo().supplier_taxes_id, self.purchase_tax_2)
+
+    def test_create_without_category_uses_current_company_default_taxes(self):
+        # Without a category, only the current company default taxes apply,
+        # whatever the companies allowed by the caller.
+        self.company.write(
+            {
+                "account_sale_tax_id": self.sale_tax.id,
+                "account_purchase_tax_id": self.purchase_tax.id,
+            }
+        )
+        self.other_company.write(
+            {
+                "account_sale_tax_id": self.other_sale_tax.id,
+                "account_purchase_tax_id": self.other_purchase_tax.id,
+            }
+        )
+        self.env.ref("product.product_category_all").write(
+            {
+                "sale_tax_ids": [Command.set(self.sale_tax.ids)],
+                "purchase_tax_ids": [Command.set(self.purchase_tax.ids)],
+            }
+        )
+        product = (
+            self.env["product.template"]
+            .with_user(self.user_both_companies)
+            .with_context(allowed_company_ids=[self.company.id, self.other_company.id])
+            .create({"name": "Test product without explicit category"})
+        )
+        self.assertEqual(product.sudo().taxes_id, self.sale_tax)
+        self.assertEqual(product.sudo().supplier_taxes_id, self.purchase_tax)
