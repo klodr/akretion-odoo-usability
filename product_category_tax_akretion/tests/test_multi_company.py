@@ -129,3 +129,29 @@ class TestProductCategoryTaxMultiCompany(TransactionCase):
             product.sudo().supplier_taxes_id,
             self.purchase_tax | self.other_purchase_tax,
         )
+
+    def test_write_category_removes_taxes_of_other_company(self):
+        # Changing the category with the current company only active must also
+        # remove the taxes of the other company of the user: the previous
+        # taxes are read with the access rules of the context
+        # (Many2many.write_real), so they are only seen when all the companies
+        # of the user are allowed.
+        both = (self.company | self.other_company).ids
+        product = (
+            self.env["product.template"]
+            .with_context(allowed_company_ids=both)
+            .create({"name": "Test product", "categ_id": self.categ_both.id})
+        )
+        self.env.flush_all()
+        self.env.invalidate_all()
+        product = (
+            self.env["product.template"]
+            .with_user(self.user_both_companies)
+            .with_context(allowed_company_ids=self.company.ids)
+            .browse(product.id)
+        )
+        product.write({"categ_id": self.categ_2.id})
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertEqual(product.sudo().taxes_id, self.sale_tax_2)
+        self.assertEqual(product.sudo().supplier_taxes_id, self.purchase_tax_2)
