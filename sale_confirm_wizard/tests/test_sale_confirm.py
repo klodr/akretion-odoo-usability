@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from odoo.exceptions import UserError
-from odoo.tests import Form, tagged
+from odoo.tests import Form, new_test_user, tagged
 from odoo.tests.common import TransactionCase
 
 
@@ -20,17 +20,26 @@ class TestSaleConfirm(TransactionCase):
                 'product_id': cls.product.id, 'product_uom_qty': 1})],
         })
 
-    def _open_wizard(self, order):
+    def _open_wizard(self, order, user=None):
         action = order.sale_confirm_wizard_button()
         self.assertEqual(action['res_model'], 'sale.confirm')
         self.assertEqual(action['target'], 'new')
-        return Form(self.env['sale.confirm'].with_context(
+        wizard_model = self.env['sale.confirm']
+        if user:
+            wizard_model = wizard_model.with_user(user)
+        return Form(wizard_model.with_context(
             active_model='sale.order', active_id=order.id))
 
     def test_wizard_defaults_and_confirm(self):
         order = self.order
         order.client_order_ref = 'PO-1'
-        form = self._open_wizard(order)
+        # the address fields of the wizard are reserved to the users of the
+        # group "Customer Addresses"
+        user = new_test_user(
+            self.env, login='sale_confirm_wizard_user',
+            groups='sales_team.group_sale_manager,'
+            'account.group_delivery_invoice_address')
+        form = self._open_wizard(order, user=user)
         self.assertEqual(form.client_order_ref, 'PO-1')
         self.assertEqual(form.partner_invoice_id, order.partner_invoice_id)
         self.assertEqual(form.partner_shipping_id, order.partner_shipping_id)
